@@ -45,8 +45,28 @@ template <class T> struct remove_cvref {
 template <class, class> struct is_same : ::estd::false_type {};
 template <class T> struct is_same<T, T> : ::estd::true_type {};
 
+template <class T> struct is_const : ::estd::false_type {};
+template <class T> struct is_const<const T> : ::estd::true_type {};
+
 template <class T> struct is_lvalue_reference : ::estd::false_type {};
 template <class T> struct is_lvalue_reference<T &> : ::estd::true_type {};
+
+namespace {
+template <typename> struct is_integral_base : ::estd::false_type {};
+template <> struct is_integral_base<bool> : ::estd::true_type {};
+template <> struct is_integral_base<char> : ::estd::true_type {};
+template <> struct is_integral_base<short> : ::estd::true_type {};
+template <> struct is_integral_base<int> : ::estd::true_type {};
+template <> struct is_integral_base<long> : ::estd::true_type {};
+template <> struct is_integral_base<long long> : ::estd::true_type {};
+template <> struct is_integral_base<unsigned char> : ::estd::true_type {};
+template <> struct is_integral_base<unsigned short> : ::estd::true_type {};
+template <> struct is_integral_base<unsigned int> : ::estd::true_type {};
+template <> struct is_integral_base<unsigned long> : ::estd::true_type {};
+template <> struct is_integral_base<unsigned long long> : ::estd::true_type {};
+}; // namespace
+
+template <typename T> struct is_integral : is_integral_base<typename ::estd::remove_cv<T>::type> {};
 
 }; // namespace estd
 
