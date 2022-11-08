@@ -8,15 +8,9 @@
 #ifndef __estd__abort__
 #define __estd__abort__
 
-#include <cstdlib>
 namespace estd {
 
-#ifndef NO_STD_LIB
-#include <stdlib.h>
-inline void abort() { ::abort(); }
-#else
 inline void abort() { volatile int _ = *static_cast<volatile int *>(nullptr); }
-#endif
 
 }; // namespace estd
 
