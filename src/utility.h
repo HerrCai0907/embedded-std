@@ -12,6 +12,9 @@
 
 namespace estd {
 
+template <class T> typename ::estd::remove_reference<T>::type &&move(T &t) noexcept {
+  return (static_cast<typename ::estd::remove_reference<T>::type &&>(t));
+}
 template <class T> T &&forward(typename ::estd::remove_reference<T>::type &t) noexcept {
   return (static_cast<T &&>(t));
 }

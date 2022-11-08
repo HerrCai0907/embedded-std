@@ -42,6 +42,9 @@ template <class T> struct remove_cvref {
   using type = typename ::estd::remove_cv<typename ::estd::remove_reference<T>::type>::type;
 };
 
+template <bool B, class T, class F> struct conditional { using type = T; };
+template <class T, class F> struct conditional<false, T, F> { using type = F; };
+
 template <class, class> struct is_same : ::estd::false_type {};
 template <class T> struct is_same<T, T> : ::estd::true_type {};
 

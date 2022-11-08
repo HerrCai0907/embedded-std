@@ -1,56 +1,115 @@
 #include "fixed_list.h"
+#include "type.h"
 #include <gtest/gtest.h>
 #include <list>
 #include <vector>
 
-std::list<int> a{};
+template <class T, ::estd::size_t N>
+bool operator==(::estd::FixedList<T, N> const &fixed_list, std::list<T> const &list) {
+  if (list.size() != fixed_list.size()) {
+    return false;
+  }
+  auto fixed_list_it = fixed_list.cbegin();
+  auto list_it = list.cbegin();
+  for (; fixed_list_it != fixed_list.cend() && list_it != list.cend(); fixed_list_it++, list_it++) {
+    if (*fixed_list_it != *list_it) {
+      return false;
+    }
+  }
+  return true;
+}
 
 TEST(FixedList, constructor) {
-  ::estd::FixedList<int, 10> list{};
+  ::estd::FixedList<int, 10U> list{};
   EXPECT_TRUE(list.empty());
-  EXPECT_EQ(list.size(), 0);
+  EXPECT_TRUE(list.begin() == list.end());
+  EXPECT_EQ(list.size(), 0U);
 }
 
 TEST(FixedList, constructor_multiple) {
   ::estd::FixedList<int, 10> list(2);
+  std::list<int> expect(2);
 
-  std::vector<int> res{};
-
-  for (auto it = list.begin(); it != list.end(); ++it) {
-    res.emplace_back(*it);
-  }
-
-  EXPECT_FALSE(list.empty());
-  EXPECT_EQ(list.size(), 2);
-  std::vector<int> expect_res(2);
-  EXPECT_EQ(res, expect_res);
+  EXPECT_TRUE(list == expect);
 }
 
 TEST(FixedList, constructor_multiple_value) {
   ::estd::FixedList<int, 10> list(2, 5);
+  std::list<int> expect(2, 5);
 
-  std::vector<int> res{};
-
-  for (auto it = list.begin(); it != list.end(); ++it) {
-    res.emplace_back(*it);
-  }
-
-  EXPECT_FALSE(list.empty());
-  EXPECT_EQ(list.size(), 2);
-  std::vector<int> expect_res{5, 5};
-  EXPECT_EQ(res, expect_res);
+  EXPECT_TRUE(list == expect);
 }
 
 TEST(FixedList, constructor_iterator) {
   std::vector<int> vec{1, 2, 3, 4};
   ::estd::FixedList<int, 10> list(vec.cbegin(), vec.cend());
+  std::list<int> expect(vec.cbegin(), vec.cend());
 
-  std::vector<int> res{};
+  EXPECT_TRUE(list == expect);
+}
 
-  for (auto it = list.begin(); it != list.end(); ++it) {
-    res.emplace_back(*it);
+TEST(FixedList, clear) {
+  std::vector<int> vec{1, 2, 3, 4};
+  ::estd::FixedList<int, 10> list(vec.cbegin(), vec.cend());
+  list.clear();
+
+  std::list<int> expect{};
+  EXPECT_TRUE(list == expect);
+}
+
+TEST(FixedList, insert) {
+  std::vector<int> data{9, 7, 5, 2};
+
+  ::estd::FixedList<int, 10> list{};
+  std::list<int> expect{};
+
+  for (int v : data) {
+    auto it1 = list.insert(list.begin(), v);
+    auto it2 = expect.insert(expect.begin(), v);
+    EXPECT_TRUE(list == expect);
+    EXPECT_EQ(*it1, *it2);
   }
+}
 
-  EXPECT_EQ(list.size(), vec.size());
-  EXPECT_EQ(res, vec);
+TEST(FixedList, insert_range) {
+  std::vector<int> data{9, 7, 5, 2};
+
+  ::estd::FixedList<int, 10> list{};
+  std::list<int> expect{};
+
+  auto it1 = list.insert(list.begin(), data.cbegin(), data.cend());
+  auto it2 = expect.insert(expect.cbegin(), data.cbegin(), data.cend());
+  EXPECT_TRUE(list == expect);
+  EXPECT_EQ(*it1, *it2);
+}
+
+TEST(FixedList, insert_null_range) {
+  std::vector<int> data{};
+
+  ::estd::FixedList<int, 10> list{};
+  std::list<int> expect{};
+
+  list.push_back(3);
+  expect.push_back(3);
+
+  auto it1 = list.insert(list.begin(), data.cbegin(), data.cend());
+  auto it2 = expect.insert(expect.cbegin(), data.cbegin(), data.cend());
+  EXPECT_TRUE(list == expect);
+  EXPECT_EQ(*it1, *it2);
+}
+
+TEST(FixedList, push) {
+  std::vector<int> data{7, 5, 3, 2};
+
+  ::estd::FixedList<int, 10> list{};
+  std::list<int> expect{};
+
+  for (int v : data) {
+    list.push_back(v);
+    expect.push_back(v);
+    EXPECT_TRUE(list == expect);
+    list.push_front(v);
+    expect.push_front(v);
+    EXPECT_TRUE(list == expect);
+  }
 }
