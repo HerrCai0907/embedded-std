@@ -138,7 +138,7 @@ private:
 
   void check(size_type pos) const noexcept {
     if (pos >= N) {
-      abort();
+      ::estd::abort();
     }
   }
 
