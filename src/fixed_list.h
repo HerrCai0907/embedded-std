@@ -20,16 +20,12 @@ template <class T> class FixedListNode {
 public:
   using value_type = T;
   T value_;
-  FixedListNode *prev_;
-  FixedListNode *post_;
+  mutable FixedListNode *prev_;
+  mutable FixedListNode *post_;
 };
 
 template <class Ptr> class BaseIterator;
 template <class T> class BaseIterator<T *> {
-  using node =
-      typename ::estd::conditional<::estd::is_const<T>::value,
-                                   const FixedListNode<typename ::estd::remove_const<T>::type>, FixedListNode<T>>::type;
-
 public:
   using value_type = T;
   using size_type = ::estd::size_t;
@@ -37,7 +33,50 @@ public:
   using reference = value_type &;
   using pointer = value_type *;
   BaseIterator() : pointer_(nullptr) {}
-  BaseIterator(node *node_ptr) : pointer_(node_ptr) {}
+  explicit BaseIterator(FixedListNode<value_type> *node_ptr) : pointer_(node_ptr) {}
+  BaseIterator(BaseIterator<value_type const *> const &it) : pointer_(it.pointer_) {}
+
+  reference operator*() const noexcept { return pointer_->value_; }
+  pointer operator->() const noexcept { return &pointer_->value_; }
+  BaseIterator &operator++() {
+    pointer_ = pointer_->post_;
+    return *this;
+  }
+  BaseIterator operator++(int) noexcept {
+    BaseIterator old = *this;
+    pointer_ = pointer_->post_;
+    return old;
+  }
+  BaseIterator &operator--() {
+    pointer_ = pointer_->prev_;
+    return *this;
+  }
+  BaseIterator operator--(int) noexcept {
+    BaseIterator old = *this;
+    pointer_ = pointer_->prev_;
+    return old;
+  }
+  bool operator==(BaseIterator other) const noexcept { return pointer_ == other.pointer_; }
+  bool operator!=(BaseIterator other) const noexcept { return pointer_ != other.pointer_; }
+
+private:
+  template <class Type, ::estd::size_t N> friend class FixedListImpl;
+  template <class Ptr> friend class BaseIterator;
+  FixedListNode<value_type> *pointer_;
+};
+
+template <class T> class BaseIterator<T const *> {
+public:
+  using value_type = T;
+  using size_type = ::estd::size_t;
+  using difference_type = ::estd::ptrdiff_t;
+  using reference = value_type &;
+  using pointer = value_type *;
+  BaseIterator() : pointer_(nullptr) {}
+  explicit BaseIterator(FixedListNode<value_type> const *node_ptr)
+      : pointer_(const_cast<FixedListNode<value_type> *>(node_ptr)) {}
+  BaseIterator(BaseIterator<value_type *> const &it) : pointer_(it.pointer_) {}
+
   reference operator*() const noexcept { return pointer_->value_; }
   pointer operator->() const noexcept { return &pointer_->value_; }
   BaseIterator &operator++() {
@@ -63,7 +102,8 @@ public:
 
 private:
   template <class Type, ::estd::size_t N> friend class FixedListImpl;
-  node *pointer_;
+  template <class Ptr> friend class BaseIterator;
+  FixedListNode<value_type> *pointer_;
 };
 
 template <class T, ::estd::size_t N> class FixedListImpl {
@@ -118,11 +158,11 @@ public:
 
   iterator begin() noexcept { return iterator{storage_[N].post_}; }
   const_iterator begin() const noexcept { return const_iterator{storage_[N].post_}; }
-  const_iterator cbegin() const noexcept { return const_iterator{storage_[N].post_}; }
+  const_iterator cbegin() const noexcept { return begin(); }
 
   iterator end() noexcept { return iterator{&storage_[N]}; }
   const_iterator end() const noexcept { return const_iterator{&storage_[N]}; }
-  const_iterator cend() const noexcept { return const_iterator{&storage_[N]}; }
+  const_iterator cend() const noexcept { return end(); }
 
   bool empty() const noexcept { return size_ == 0U; }
   size_type size() const noexcept { return size_; }
@@ -138,8 +178,8 @@ public:
     size_ = 0U;
   }
 
-  iterator insert(iterator pos, const T &value) noexcept { return insert(pos, T{value}); }
-  iterator insert(iterator pos, T &&value) noexcept {
+  iterator insert(const_iterator pos, const T &value) noexcept { return insert(pos, T{value}); }
+  iterator insert(const_iterator pos, T &&value) noexcept {
     if (free_ == &storage_[N]) {
       return end();
     } else {
@@ -156,7 +196,7 @@ public:
       return iterator{current};
     }
   }
-  template <class InputIt> iterator insert(iterator pos, InputIt first, InputIt last) {
+  template <class InputIt> iterator insert(const_iterator pos, InputIt first, InputIt last) noexcept {
     iterator first_it = pos;
     if (first != last) {
       first_it = insert(pos, *first);
@@ -169,24 +209,41 @@ public:
     return first_it;
   }
 
-  void push_back(const T &value) { insert(end(), value); }
-  void push_back(T &&value) { insert(end(), ::estd::move(value)); }
-  void push_front(const T &value) { insert(begin(), value); }
-  void push_front(T &&value) { insert(begin(), ::estd::move(value)); }
+  iterator erase(const_iterator pos) noexcept {
+    FixedListNode<value_type> *position = pos.pointer_;
+    position->prev_->post_ = position->post_;
+    position->post_->prev_ = position->prev_;
+    --size_;
+    return iterator{position->post_};
+  }
+  iterator erase(const_iterator first, const_iterator last) noexcept {
+    for (const_iterator it = first; it != last; ++it) {
+      --size_;
+    }
+    FixedListNode<value_type> *first_position = first.pointer_;
+    FixedListNode<value_type> *last_position = last.pointer_;
+    first_position->prev_->post_ = last_position;
+    last_position->prev_ = first_position->prev_;
+    return iterator{last_position};
+  }
+
+  void push_back(const T &value) noexcept { insert(cend(), value); }
+  void push_back(T &&value) noexcept { insert(cend(), ::estd::move(value)); }
+  void push_front(const T &value) noexcept { insert(cbegin(), value); }
+  void push_front(T &&value) noexcept { insert(cbegin(), ::estd::move(value)); }
 
 private:
   template <class A, class B>
   FixedListImpl(A first, B last, ::estd::true_type) noexcept
       : FixedListImpl(static_cast<size_type>(first), static_cast<T>(last)) {}
   template <class InputIt>
-  FixedListImpl(InputIt first, InputIt last, ::estd::false_type) noexcept : size_(), storage_(), free_() {
+  FixedListImpl(InputIt first, InputIt last, ::estd::false_type) noexcept : size_(0U), storage_(), free_() {
     init_free();
     for (InputIt it = first; it != last; ++it) {
       storage_[size_].value_ = *it;
       ++size_;
     }
     pre_alloc(size_);
-    free_ = &storage_[size_];
   }
   void init_free() noexcept {
     FixedListNode<T> *current = &storage_[0U];
@@ -200,6 +257,7 @@ private:
     if (size_ > 0U) {
       storage_[size_ - 1U].post_ = &storage_[N];
       storage_[N].prev_ = &storage_[size_ - 1U];
+      storage_[0U].prev_ = &storage_[N];
       storage_[N].post_ = &storage_[0U];
     } else {
       storage_[N].prev_ = &storage_[N];

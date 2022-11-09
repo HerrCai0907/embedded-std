@@ -1,6 +1,8 @@
 #include "fixed_list.h"
 #include "type.h"
 #include <gtest/gtest.h>
+#include <iostream>
+#include <iterator>
 #include <list>
 #include <vector>
 
@@ -94,6 +96,49 @@ TEST(FixedList, insert_null_range) {
 
   auto it1 = list.insert(list.begin(), data.cbegin(), data.cend());
   auto it2 = expect.insert(expect.cbegin(), data.cbegin(), data.cend());
+  EXPECT_TRUE(list == expect);
+  EXPECT_EQ(*it1, *it2);
+}
+
+TEST(FixedList, earse) {
+  std::vector<int> vec{1, 2, 3, 4, 5};
+  ::estd::FixedList<int, 10> list(vec.cbegin(), vec.cend());
+  std::list<int> expect(vec.cbegin(), vec.cend());
+  {
+    auto it1 = list.erase(list.begin());
+    auto it2 = expect.erase(expect.begin());
+    EXPECT_TRUE(list == expect);
+    EXPECT_EQ(*it1, *it2);
+  }
+  {
+    auto it1 = list.erase(--list.end());
+    auto it2 = expect.erase(--expect.end());
+    EXPECT_TRUE(list == expect);
+    EXPECT_EQ(it1, list.end());
+  }
+  {
+    auto it1 = list.erase(++list.begin());
+    auto it2 = expect.erase(++expect.begin());
+    EXPECT_TRUE(list == expect);
+    EXPECT_EQ(*it1, *it2);
+  }
+}
+
+TEST(FixedList, earse_range) {
+  std::vector<int> vec{1, 2, 3, 4, 5};
+  ::estd::FixedList<int, 10> list(vec.cbegin(), vec.cend());
+  std::list<int> expect(vec.cbegin(), vec.cend());
+
+  auto list_last = list.begin();
+  ++list_last;
+  ++list_last;
+  auto it1 = list.erase(list.begin(), list_last);
+
+  auto expect_last = expect.cbegin();
+  ++expect_last;
+  ++expect_last;
+  auto it2 = expect.erase(expect.begin(), expect_last);
+
   EXPECT_TRUE(list == expect);
   EXPECT_EQ(*it1, *it2);
 }
