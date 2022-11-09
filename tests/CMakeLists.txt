@@ -10,10 +10,15 @@ set(gtest_force_shared_crt
     CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-
 include_directories(${CMAKE_SOURCE_DIR}/src)
 include(GoogleTest)
 
-add_executable(array_test array_test.cpp)
-target_link_libraries(array_test GTest::gtest_main)
-gtest_discover_tests(array_test)
+function(TESTCASE test_name)
+  message(STATUS "test case ${test_name}")
+  add_executable(${test_name} ${test_name}.cpp)
+  target_link_libraries (${test_name} GTest::gtest_main)
+  gtest_discover_tests(${test_name}) 
+endfunction()
+
+TESTCASE(array_test)
+TESTCASE(intrusive_list_test)

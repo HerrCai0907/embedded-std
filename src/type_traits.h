@@ -48,6 +48,12 @@ template <class T> struct is_same<T, T> : ::estd::true_type {};
 template <class T> struct is_lvalue_reference : ::estd::false_type {};
 template <class T> struct is_lvalue_reference<T &> : ::estd::true_type {};
 
+template <class T> struct is_const : ::estd::false_type {};
+template <class T> struct is_const<T const> : ::estd::true_type {};
+
+template <bool B, class T, class F> struct conditional { using type = T; };
+template <class T, class F> struct conditional<false, T, F> { using type = F; };
+
 }; // namespace estd
 
 #endif
