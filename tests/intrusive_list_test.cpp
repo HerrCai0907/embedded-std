@@ -1,6 +1,8 @@
 #include "intrusive_list.h"
+#include <array>
 #include <gtest/gtest.h>
 #include <list>
+#include <vector>
 
 struct ST {
   struct GetNode;
@@ -141,4 +143,99 @@ TEST(IntrusiveList, remove_if) {
 
   EXPECT_EQ(list, data);
   EXPECT_EQ(list.size(), 3U);
+}
+
+TEST(IntrusiveListNode, insert) {
+  std::vector<ST> data{ST{1}, ST{2}, ST{3}, ST{4}, ST{5}, ST{6}};
+
+  data[0].node_.link_self();
+  for (int i = 1; i < data.size(); i++) {
+    data[i].node_.insert_after(&data[i - 1].node_);
+  }
+  for (int i = 0; i < data.size(); i++) {
+    EXPECT_EQ(data[i].node_.size(), data.size());
+  }
+
+  STNode *node = &data[0].node_;
+  for (int i = 0; i < data.size(); i++) {
+    EXPECT_EQ(&node->get_value(), &data[i]);
+    node = node->next();
+  }
+}
+
+TEST(IntrusiveListNode, remove) {
+  std::vector<ST> data{ST{1}, ST{2}, ST{3}, ST{4}, ST{5}, ST{6}};
+  std::list<ST> expect(data.begin(), data.end());
+
+  data[0].node_.link_self();
+  for (int i = 1; i < data.size(); i++) {
+    data[i].node_.insert_after(&data[i - 1].node_);
+  }
+  auto remove_size = data[2].node_.remove(ST{4});
+  expect.remove(ST{4});
+
+  EXPECT_EQ(remove_size, 1U);
+
+  STNode *node = &data[0].node_;
+  for (auto v : expect) {
+    EXPECT_EQ(node->get_value().value_, v.value_);
+    node = node->next();
+  }
+}
+
+TEST(IntrusiveListNode, remove_if) {
+  std::vector<ST> data{ST{1}, ST{2}, ST{3}, ST{4}, ST{5}, ST{6}};
+  std::list<ST> expect(data.begin(), data.end());
+
+  data[0].node_.link_self();
+  for (int i = 1; i < data.size(); i++) {
+    data[i].node_.insert_after(&data[i - 1].node_);
+  }
+  auto p = [](ST const &st) { return st.value_ % 2 == 1; };
+  auto remove_size = data[2].node_.remove_if(p);
+  expect.remove_if(p);
+
+  EXPECT_EQ(remove_size, 3U);
+
+  STNode *node = &data[1].node_;
+  for (auto v : expect) {
+    EXPECT_EQ(node->get_value().value_, v.value_);
+    node = node->next();
+  }
+}
+
+TEST(IntrusiveListNode, remove_if_2) {
+  std::vector<ST> data{ST{1}, ST{2}, ST{3}, ST{4}, ST{5}, ST{6}};
+  std::list<ST> expect(data.begin(), data.end());
+
+  data[0].node_.link_self();
+  for (int i = 1; i < data.size(); i++) {
+    data[i].node_.insert_after(&data[i - 1].node_);
+  }
+  auto p = [](ST const &st) { return st.value_ % 2 == 0; };
+  auto remove_size = data[2].node_.remove_if(p);
+  expect.remove_if(p);
+
+  EXPECT_EQ(remove_size, 3U);
+
+  STNode *node = &data[0].node_;
+  for (auto v : expect) {
+    EXPECT_EQ(node->get_value().value_, v.value_);
+    node = node->next();
+  }
+}
+
+TEST(IntrusiveListNode, remove_if_all) {
+  std::vector<ST> data{ST{1}, ST{2}, ST{3}, ST{4}, ST{5}, ST{6}};
+  std::list<ST> expect(data.begin(), data.end());
+
+  data[0].node_.link_self();
+  for (int i = 1; i < data.size(); i++) {
+    data[i].node_.insert_after(&data[i - 1].node_);
+  }
+  auto p = [](ST const &st) { return st.value_ > 0; };
+  auto remove_size = data[2].node_.remove_if(p);
+  expect.remove_if(p);
+
+  EXPECT_EQ(remove_size, 6);
 }

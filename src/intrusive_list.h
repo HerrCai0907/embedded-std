@@ -8,7 +8,6 @@
 namespace estd {
 
 template <class Node> class IntrusiveList;
-
 namespace {
 template <class Node> class BaseIterator;
 };
@@ -16,6 +15,11 @@ template <class Node> class BaseIterator;
 template <class T, class GetNode, class GetElement> class IntrusiveListNode {
 public:
   using value_type = T;
+  using size_type = ::estd::size_t;
+  using reference = value_type &;
+  using const_reference = const value_type &;
+  using pointer = value_type *;
+  using const_pointer = const value_type *;
 
   static IntrusiveListNode *get_node(T *const element) {
     static GetNode get_node_instance{};
@@ -32,18 +36,80 @@ public:
 
   IntrusiveListNode() noexcept : prev_{nullptr}, post_{nullptr} {}
 
-  void insert_before(IntrusiveListNode *const insert_node) noexcept {
-    this->post_ = insert_node;
-    this->prev_ = insert_node->prev_;
-    insert_node->prev_ = this;
-    this->prev_->post_ = this;
+  void link_self() noexcept {
+    this->prev_ = this;
+    this->post_ = this;
   }
-  void earse() {
+  void insert_before(IntrusiveListNode *const insert_position) noexcept {
+    IntrusiveListNode *const prev_position = insert_position->prev_;
+    this->post_ = insert_position;
+    this->prev_ = prev_position;
+    insert_position->prev_ = this;
+    prev_position->post_ = this;
+  }
+  void insert_after(IntrusiveListNode *const insert_position) noexcept {
+    IntrusiveListNode *const post_position = insert_position->post_;
+    this->post_ = post_position;
+    this->prev_ = insert_position;
+    insert_position->post_ = this;
+    post_position->prev_ = this;
+  }
+  void erase() {
     this->post_->prev_ = this->prev_;
     this->prev_->post_ = this->post_;
   }
 
-private:
+  size_type remove(const_reference value) noexcept {
+    return remove_if([&value](const_reference element) { return element == value; });
+  }
+
+  template <class UnaryPredicate> size_type remove_if(UnaryPredicate p) noexcept {
+    size_type remove_counter = 0U;
+    IntrusiveListNode *current_node = this;
+    IntrusiveListNode *end_node = this;
+    bool find_end_node_flag = false;
+
+    while (true) {
+      IntrusiveListNode *next_node = current_node->post_;
+      if (p(current_node->get_value())) {
+        current_node->erase();
+        ++remove_counter;
+      } else {
+        // find node not match request, it will be the end position of this remove
+        break;
+      }
+      if (next_node == current_node) {
+        // only one node
+        break;
+      }
+      current_node = next_node;
+    }
+    end_node = current_node;
+    while (current_node->post_ != end_node) {
+      current_node = current_node->post_;
+      if (p(current_node->get_value())) {
+        current_node->erase();
+        ++remove_counter;
+      }
+    }
+
+    return remove_counter;
+  }
+
+  IntrusiveListNode *next() const noexcept { return post_; }
+  reference get_value() noexcept { return *get_element(this); }
+
+  size_type size() const noexcept {
+    size_type list_size = 1;
+    IntrusiveListNode *current = post_;
+    while (current != this) {
+      ++list_size;
+      current = current->post_;
+    }
+    return list_size;
+  }
+
+protected:
   friend class IntrusiveList<IntrusiveListNode>;
   friend class BaseIterator<IntrusiveListNode>;
   friend class BaseIterator<IntrusiveListNode const>;
@@ -130,7 +196,7 @@ public:
   iterator erase(iterator pos) noexcept {
     --size_;
     iterator const post_iter = iterator{pos.node_p_->post_};
-    pos.node_p_->earse();
+    pos.node_p_->erase();
     return post_iter;
   }
 
@@ -158,7 +224,7 @@ public:
    */
   void pop_back() noexcept {
     --size_;
-    end_node_.prev_->earse();
+    end_node_.prev_->erase();
   }
   /**
    * @brief Removes the first element of the container. If there are no elements in the container, the behavior is
@@ -166,7 +232,7 @@ public:
    */
   void pop_front() noexcept {
     --size_;
-    end_node_.post_->earse();
+    end_node_.post_->erase();
   }
 
   size_type remove(const_reference value) noexcept {
